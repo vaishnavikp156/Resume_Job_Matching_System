@@ -11,9 +11,11 @@ env/
 *.pdf
 *.docx
 
+jobs.csv
 jobs_raw.csv
 jobs_clean.csv
 jobs_with_skills.csv
+
 recommendations.csv
 
 .vscode/
