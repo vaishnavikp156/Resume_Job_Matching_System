@@ -23,14 +23,70 @@ st.set_page_config(
 
 
 # ==========================================
+# CUSTOM STYLING
+# ==========================================
+
+st.markdown(
+    """
+    <style>
+
+    .main-title {
+        font-size: 42px;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .subtitle {
+        font-size: 18px;
+        color: #666666;
+        margin-bottom: 25px;
+    }
+
+    .job-card {
+    padding: 20px;
+    border-radius: 12px;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    margin-bottom: 20px;
+    background-color: transparent;
+}
+
+    .score {
+        font-size: 28px;
+        font-weight: 700;
+    }
+
+    .skill-badge {
+    display: inline-block;
+    padding: 5px 10px;
+    margin: 3px;
+    border-radius: 15px;
+    background-color: rgba(128, 128, 128, 0.20);
+    color: inherit !important;
+    border: 1px solid rgba(128, 128, 128, 0.35);
+    font-size: 14px;
+    font-weight: 500;
+}
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+# ==========================================
 # TITLE
 # ==========================================
 
-st.title("💼 Resume Job Matching System")
+st.markdown(
+    '<div class="main-title">💼 Resume Job Matching System</div>',
+    unsafe_allow_html=True
+)
 
-st.write(
-    "Upload your resume to find relevant job opportunities "
-    "based on resume content and technical skills."
+st.markdown(
+    '<div class="subtitle">'
+    'Find relevant job opportunities based on your resume content and technical skills.'
+    '</div>',
+    unsafe_allow_html=True
 )
 
 
@@ -54,11 +110,43 @@ df = load_jobs()
 
 
 # ==========================================
+# SIDEBAR
+# ==========================================
+
+st.sidebar.header("🔎 Recommendation Filters")
+
+location_options = ["All Locations"] + sorted(
+    df["location"].dropna().unique().tolist()
+)
+
+selected_location = st.sidebar.selectbox(
+    "📍 Location",
+    location_options
+)
+
+minimum_score = st.sidebar.slider(
+    "🎯 Minimum Match Score (%)",
+    min_value=0,
+    max_value=100,
+    value=0,
+    step=5
+)
+
+number_of_jobs = st.sidebar.selectbox(
+    "🔢 Number of Recommendations",
+    [5, 10, 15, 20],
+    index=1
+)
+
+
+# ==========================================
 # RESUME UPLOAD
 # ==========================================
 
+st.subheader("📄 Upload Your Resume")
+
 uploaded_file = st.file_uploader(
-    "Upload your resume",
+    "Choose a PDF or DOCX resume",
     type=["pdf", "docx"]
 )
 
@@ -69,7 +157,10 @@ uploaded_file = st.file_uploader(
 
 if uploaded_file is not None:
 
-    # Save uploaded file temporarily
+    # ======================================
+    # SAVE UPLOADED FILE TEMPORARILY
+    # ======================================
+
     suffix = os.path.splitext(
         uploaded_file.name
     )[1]
@@ -86,31 +177,46 @@ if uploaded_file is not None:
         temp_path = temp_file.name
 
 
-    # Extract resume text
+    # ======================================
+    # EXTRACT RESUME TEXT
+    # ======================================
+
     resume_text = extract_resume_text(
         temp_path
     )
 
 
-    # Extract resume skills
+    # ======================================
+    # EXTRACT RESUME SKILLS
+    # ======================================
+
     resume_skills = extract_skills(
         resume_text
     )
 
 
     # ======================================
-    # DISPLAY RESUME SKILLS
+    # DISPLAY RESUME INFORMATION
     # ======================================
 
-    st.subheader("📋 Extracted Resume Skills")
+    st.subheader("🧠 Extracted Resume Skills")
 
     if resume_skills:
 
-        skill_text = " • ".join(
-            resume_skills
-        )
+        skill_html = ""
 
-        st.info(skill_text)
+        for skill in resume_skills:
+
+            skill_html += (
+                f'<span class="skill-badge">'
+                f'{skill}'
+                f'</span>'
+            )
+
+        st.markdown(
+            skill_html,
+            unsafe_allow_html=True
+        )
 
     else:
 
@@ -129,21 +235,17 @@ if uploaded_file is not None:
         df["job_text"].fillna("").tolist()
     )
 
-
     vectorizer = TfidfVectorizer(
         stop_words="english"
     )
-
 
     tfidf_matrix = vectorizer.fit_transform(
         documents
     )
 
-
     resume_vector = tfidf_matrix[0]
 
     job_vectors = tfidf_matrix[1:]
-
 
     similarities = cosine_similarity(
         resume_vector,
@@ -183,7 +285,7 @@ if uploaded_file is not None:
 
 
     # ======================================
-    # FINAL SCORE
+    # FINAL MATCH SCORE
     # ======================================
 
     df["match_score"] = (
@@ -192,40 +294,114 @@ if uploaded_file is not None:
         0.30 * df["skill_score"]
     )
 
-
     df["match_percentage"] = (
         df["match_score"] * 100
     )
 
 
-    # Sort by score
-    results = df.sort_values(
+    # ======================================
+    # APPLY LOCATION FILTER
+    # ======================================
+
+    filtered_df = df.copy()
+
+    if selected_location != "All Locations":
+
+        filtered_df = filtered_df[
+            filtered_df["location"]
+            ==
+            selected_location
+        ]
+
+
+    # ======================================
+    # APPLY SCORE FILTER
+    # ======================================
+
+    filtered_df = filtered_df[
+        filtered_df["match_percentage"]
+        >=
+        minimum_score
+    ]
+
+
+    # ======================================
+    # SORT RESULTS
+    # ======================================
+
+    results = filtered_df.sort_values(
         "match_score",
         ascending=False
-    ).head(10)
+    ).head(
+        number_of_jobs
+    )
+
+
+    # ======================================
+    # SUMMARY
+    # ======================================
+
+    st.subheader("📊 Matching Summary")
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Jobs Analyzed",
+            f"{len(df):,}"
+        )
+
+    with col2:
+
+        st.metric(
+            "Resume Skills",
+            len(resume_skills)
+        )
+
+    with col3:
+
+        st.metric(
+            "Jobs Recommended",
+            len(results)
+        )
 
 
     # ======================================
     # DISPLAY RESULTS
     # ======================================
 
-    st.subheader(
-        "🎯 Top Job Recommendations"
-    )
+    st.subheader("🎯 Recommended Jobs")
 
-    for index, (_, job) in enumerate(
-        results.iterrows(),
-        start=1
-    ):
+    if len(results) == 0:
 
-        matched_skills = sorted(
-            set(resume_skills).intersection(
-                set(job["job_skills"])
-            )
+        st.warning(
+            "No jobs match the selected filters. "
+            "Try lowering the minimum score or selecting All Locations."
         )
 
+    else:
 
-        with st.container():
+        for index, (_, job) in enumerate(
+            results.iterrows(),
+            start=1
+        ):
+
+            matched_skills = sorted(
+                set(resume_skills).intersection(
+                    set(job["job_skills"])
+                )
+            )
+
+
+            # ==================================
+            # JOB CARD
+            # ==================================
+
+            st.markdown(
+                '<div class="job-card">',
+                unsafe_allow_html=True
+            )
 
             st.markdown(
                 f"### {index}. {job['title']}"
@@ -234,44 +410,73 @@ if uploaded_file is not None:
             col1, col2, col3 = st.columns(3)
 
             with col1:
+
                 st.write(
                     f"🏢 **Company:** "
                     f"{job['company']}"
                 )
 
             with col2:
+
                 st.write(
                     f"📍 **Location:** "
                     f"{job['location']}"
                 )
 
             with col3:
+
+                st.markdown(
+                    f'<div class="score">'
+                    f'🎯 {job["match_percentage"]:.2f}%'
+                    f'</div>',
+                    unsafe_allow_html=True
+                )
+
+                st.caption("Match Score")
+
+
+            # ==================================
+            # SCORE DETAILS
+            # ==================================
+
+            score_col1, score_col2 = st.columns(2)
+
+            with score_col1:
+
                 st.write(
-                    f"🎯 **Match Score:** "
-                    f"{job['match_percentage']:.2f}%"
+                    f"**Text Similarity:** "
+                    f"{job['text_similarity'] * 100:.2f}%"
+                )
+
+            with score_col2:
+
+                st.write(
+                    f"**Skill Match:** "
+                    f"{job['skill_score'] * 100:.2f}%"
                 )
 
 
-            st.write(
-                f"**Text Similarity:** "
-                f"{job['text_similarity'] * 100:.2f}%"
-            )
-
-
-            st.write(
-                f"**Skill Match:** "
-                f"{job['skill_score'] * 100:.2f}%"
-            )
-
+            # ==================================
+            # MATCHED SKILLS
+            # ==================================
 
             if matched_skills:
 
-                st.write(
-                    "**Matched Skills:** "
-                    +
-                    ", ".join(
-                        matched_skills
+                st.write("**Matched Skills:**")
+
+                skill_html = ""
+
+                for skill in matched_skills:
+
+                    skill_html += (
+                        f'<span class="skill-badge">'
+                        f'{skill}'
+                        f'</span>'
                     )
+
+                st.markdown(
+                    skill_html,
+                    unsafe_allow_html=True
                 )
 
             else:
@@ -281,13 +486,22 @@ if uploaded_file is not None:
                 )
 
 
-            st.link_button(
-                "🔗 View Job",
-                job["job_url"]
+            # ==================================
+            # VIEW JOB
+            # ==================================
+
+            if pd.notna(job["job_url"]):
+
+                st.link_button(
+                    "🔗 View Job",
+                    job["job_url"]
+                )
+
+
+            st.markdown(
+                '</div>',
+                unsafe_allow_html=True
             )
-
-
-            st.divider()
 
 
     # ======================================
