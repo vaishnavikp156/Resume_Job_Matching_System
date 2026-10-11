@@ -164,8 +164,10 @@ def extract_skills(text):
         "ML": "Machine Learning",
         "DL": "Deep Learning",
         "OOP": "Object-Oriented Programming",
+        "NLP": "Natural Language Processing",
+        "LLM": "Large Language Models",
+        "Airflow": "Apache Airflow",
     }
-
     normalized = set()
 
     for skill in found:
