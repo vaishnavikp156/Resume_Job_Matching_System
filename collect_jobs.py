@@ -32,7 +32,7 @@ job_roles = [
 # ==============================
 
 locations = [
-    "Bengaluru",
+     "Bengaluru",
     "Hyderabad",
     "Chennai",
     "Pune",
@@ -41,7 +41,22 @@ locations = [
     "Noida",
     "Gurgaon",
     "Kolkata",
-    "Ahmedabad"
+    "Ahmedabad",
+    "Mysuru",
+    "Mangaluru",
+    "Kochi",
+    "Coimbatore",
+    "Jaipur",
+    "Chandigarh",
+    "Lucknow",
+    "Indore",
+    "Bhubaneswar",
+    "Visakhapatnam",
+    "Nagpur",
+    "Surat",
+    "Vadodara",
+    "Thiruvananthapuram",
+    "Bhopal"
 ]
 
 # ==============================
@@ -109,7 +124,7 @@ for role in job_roles:
             print("Error:", e)
 
         # Small delay between requests
-        time.sleep(1)
+        time.sleep(3)
 
 
 # ==============================
