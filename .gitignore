@@ -13,11 +13,21 @@ env/
 
 jobs.csv
 jobs_raw.csv
+jobs_raw_old.csv
 jobs_clean.csv
 jobs_with_skills.csv
-
 recommendations.csv
 
 .vscode/
 .DS_Store
 Thumbs.db
+
+data/jobs_with_skills_old.csv
+
+# Local datasets and generated matching artifacts
+data/*.csv
+data/*.npy
+data/*.joblib
+
+# Local backup
+app_broken_backup.py

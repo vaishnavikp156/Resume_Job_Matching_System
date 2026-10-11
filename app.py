@@ -1,464 +1,512 @@
-import streamlit as st
-import pandas as pd
-import ast
+﻿import os
+import sys
 import tempfile
-import os
 
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+import pandas as pd
+import streamlit as st
 
-from resume_parser import extract_resume_text
-from skill_extractor import extract_skills
+# ------------------------------------------------------------
+# Project paths
+# ------------------------------------------------------------
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+if BASE_DIR not in sys.path:
+    sys.path.insert(0, BASE_DIR)
+
+from src.matcher import match_jobs
+from src.resume_parser import extract_resume_text
+from src.skill_extractor import extract_skills
 
 
-# ==========================================
-# PAGE CONFIGURATION
-# ==========================================
+# ------------------------------------------------------------
+# Page configuration
+# ------------------------------------------------------------
 
 st.set_page_config(
-    page_title="Resume Job Matching System",
-    page_icon="💼",
-    layout="wide"
+    page_title="ResumeMatch",
+    page_icon="🎯",
+    layout="wide",
+    initial_sidebar_state="expanded",
 )
 
 
-# ==========================================
-# CUSTOM STYLING
-# ==========================================
+# ------------------------------------------------------------
+# Styling
+# ------------------------------------------------------------
 
 st.markdown(
     """
     <style>
 
     .main-title {
-        font-size: 42px;
-        font-weight: 700;
-        margin-bottom: 5px;
+        font-size: 3rem;
+        font-weight: 750;
+        margin-bottom: 0.2rem;
     }
 
     .subtitle {
-        font-size: 18px;
-        color: #666666;
-        margin-bottom: 25px;
+        font-size: 1.1rem;
+        color: #6b7280;
+        margin-bottom: 1.5rem;
     }
 
     .job-card {
-    padding: 20px;
-    border-radius: 12px;
-    border: 1px solid rgba(128, 128, 128, 0.35);
-    margin-bottom: 20px;
-    background-color: transparent;
-}
+        padding: 1.3rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 14px;
+        margin-bottom: 1rem;
+        background: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
 
-    .score {
-        font-size: 28px;
+    .job-title {
+        font-size: 1.25rem;
         font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+
+    .job-company {
+        color: #4b5563;
+        margin-bottom: 0.2rem;
+    }
+
+    .job-location {
+        color: #6b7280;
+        margin-bottom: 0.8rem;
+    }
+
+    .score-box {
+        padding: 0.8rem;
+        border-radius: 10px;
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
     }
 
     .skill-badge {
-    display: inline-block;
-    padding: 5px 10px;
-    margin: 3px;
-    border-radius: 15px;
-    background-color: rgba(128, 128, 128, 0.20);
-    color: inherit !important;
-    border: 1px solid rgba(128, 128, 128, 0.35);
-    font-size: 14px;
-    font-weight: 500;
-}
+        display: inline-block;
+        padding: 5px 10px;
+        margin: 3px 4px 3px 0;
+        border-radius: 999px;
+        background: #eef2ff;
+        color: #3730a3;
+        border: 1px solid #c7d2fe;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+
+    .missing-badge {
+        display: inline-block;
+        padding: 5px 10px;
+        margin: 3px 4px 3px 0;
+        border-radius: 999px;
+        background: #fff7ed;
+        color: #9a3412;
+        border: 1px solid #fed7aa;
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
 
     </style>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
-# ==========================================
-# TITLE
-# ==========================================
+# ------------------------------------------------------------
+# Header
+# ------------------------------------------------------------
 
 st.markdown(
-    '<div class="main-title">💼 Resume Job Matching System</div>',
-    unsafe_allow_html=True
+    '<div class="main-title">ResumeMatch</div>',
+    unsafe_allow_html=True,
 )
 
 st.markdown(
     '<div class="subtitle">'
-    'Find relevant job opportunities based on your resume content and technical skills.'
+    'Personalized job recommendations using text similarity and skill matching.'
     '</div>',
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 
-# ==========================================
-# LOAD JOB DATA
-# ==========================================
+# ------------------------------------------------------------
+# Sidebar
+# ------------------------------------------------------------
 
-@st.cache_data
-def load_jobs():
+with st.sidebar:
 
-    df = pd.read_csv("jobs_with_skills.csv")
+    st.header("ResumeMatch")
 
-    df["job_skills"] = df["job_skills"].apply(
-        ast.literal_eval
+    st.write(
+        "Upload your resume and get ranked job recommendations "
+        "based on your skills and resume content."
     )
 
-    return df
+    st.divider()
 
+    # Location filter
+    location_options = [
+        "All Locations",
+        "Ahmedabad",
+        "Bengaluru",
+        "Bhopal",
+        "Bhubaneswar",
+        "Chandigarh",
+        "Chennai",
+        "Coimbatore",
+        "Delhi",
+        "Gurgaon",
+        "Hyderabad",
+        "Indore",
+        "Jaipur",
+        "Kochi",
+        "Kolkata",
+        "Lucknow",
+        "Mangaluru",
+        "Mumbai",
+        "Mysuru",
+        "Nagpur",
+        "Noida",
+        "Pune",
+        "Surat",
+        "Thiruvananthapuram",
+        "Vadodara",
+        "Visakhapatnam",
+    ]
 
-df = load_jobs()
+    selected_location = st.selectbox(
+        "Location",
+        location_options,
+        index=0,
+    )
 
+    st.divider()
 
-# ==========================================
-# SIDEBAR
-# ==========================================
+    # Number of recommendations
+    top_n = st.number_input(
+        "Number of recommendations",
+        min_value=1,
+        max_value=3000,
+        value=10,
+        step=1,
+    )
 
-st.sidebar.header("🔎 Recommendation Filters")
+    if top_n > 100:
+        st.warning(
+            "⚠️ Maximum 100 recommendations allowed.\n\n"
+            "Please enter a number between 1 and 100."
+        )
 
-location_options = ["All Locations"] + sorted(
-    df["location"].dropna().unique().tolist()
+    st.divider()
+
+    st.caption("Matching methodology")
+
+    st.write(
+        """
+        **40%** TF-IDF text similarity  
+        **40%** semantic similarity  
+        **20%** skill coverage
+        """
+    )
+
+    st.caption(
+        "The final score is a hybrid similarity score used to rank jobs."
+    )
+
+# ------------------------------------------------------------
+# Dataset information
+# ------------------------------------------------------------
+
+DATA_PATH = os.path.join(
+    BASE_DIR,
+    "data",
+    "jobs_with_skills.csv",
 )
 
-selected_location = st.sidebar.selectbox(
-    "📍 Location",
-    location_options
-)
+try:
 
-minimum_score = st.sidebar.slider(
-    "🎯 Minimum Match Score (%)",
-    min_value=0,
-    max_value=100,
-    value=0,
-    step=5
-)
+    jobs_df = pd.read_csv(DATA_PATH)
 
-number_of_jobs = st.sidebar.selectbox(
-    "🔢 Number of Recommendations",
-    [5, 10, 15, 20],
-    index=1
-)
+    job_count = len(jobs_df)
+
+    location_count = (
+        jobs_df["location"].nunique()
+        if "location" in jobs_df.columns
+        else 0
+    )
+
+except Exception:
+
+    job_count = 3085
+    location_count = 25
 
 
-# ==========================================
-# RESUME UPLOAD
-# ==========================================
+col1, col2, col3 = st.columns(3)
 
-st.subheader("📄 Upload Your Resume")
+with col1:
+    st.metric("Jobs", f"{job_count:,}")
+
+with col2:
+    st.metric("Locations", location_count)
+
+with col3:
+    st.metric("Matching", "Resume + Skills")
+
+
+st.divider()
+
+
+# ------------------------------------------------------------
+# Resume upload
+# ------------------------------------------------------------
+
+st.subheader("Upload your resume")
 
 uploaded_file = st.file_uploader(
-    "Choose a PDF or DOCX resume",
-    type=["pdf", "docx"]
+    "Upload a PDF or DOCX resume",
+    type=["pdf", "docx"],
+    help="Your resume is processed locally for skill extraction and matching.",
 )
 
 
-# ==========================================
-# MATCHING
-# ==========================================
+# ------------------------------------------------------------
+# Main processing
+# ------------------------------------------------------------
 
 if uploaded_file is not None:
 
-    # ======================================
-    # SAVE UPLOADED FILE TEMPORARILY
-    # ======================================
+    suffix = os.path.splitext(uploaded_file.name)[1]
 
-    suffix = os.path.splitext(
-        uploaded_file.name
-    )[1]
+    temp_path = None
 
-    with tempfile.NamedTemporaryFile(
-        delete=False,
-        suffix=suffix
-    ) as temp_file:
+    try:
 
-        temp_file.write(
-            uploaded_file.getbuffer()
-        )
+        # ----------------------------------------------------
+        # Save uploaded file temporarily
+        # ----------------------------------------------------
 
-        temp_path = temp_file.name
+        with tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=suffix,
+        ) as temp_file:
 
-
-    # ======================================
-    # EXTRACT RESUME TEXT
-    # ======================================
-
-    resume_text = extract_resume_text(
-        temp_path
-    )
+            temp_file.write(uploaded_file.getbuffer())
+            temp_path = temp_file.name
 
 
-    # ======================================
-    # EXTRACT RESUME SKILLS
-    # ======================================
+        # ----------------------------------------------------
+        # Extract resume text
+        # ----------------------------------------------------
 
-    resume_skills = extract_skills(
-        resume_text
-    )
+        with st.spinner("Reading your resume..."):
+
+            resume_text = extract_resume_text(temp_path)
 
 
-    # ======================================
-    # DISPLAY RESUME INFORMATION
-    # ======================================
+        if not resume_text.strip():
 
-    st.subheader("🧠 Extracted Resume Skills")
-
-    if resume_skills:
-
-        skill_html = ""
-
-        for skill in resume_skills:
-
-            skill_html += (
-                f'<span class="skill-badge">'
-                f'{skill}'
-                f'</span>'
+            st.error(
+                "Could not extract text from the uploaded resume."
             )
 
-        st.markdown(
-            skill_html,
-            unsafe_allow_html=True
-        )
-
-    else:
-
-        st.warning(
-            "No predefined technical skills were detected."
-        )
+            st.stop()
 
 
-    # ======================================
-    # TF-IDF SIMILARITY
-    # ======================================
+        # ----------------------------------------------------
+        # Extract skills
+        # ----------------------------------------------------
 
-    documents = (
-        [resume_text]
-        +
-        df["job_text"].fillna("").tolist()
-    )
-
-    vectorizer = TfidfVectorizer(
-        stop_words="english"
-    )
-
-    tfidf_matrix = vectorizer.fit_transform(
-        documents
-    )
-
-    resume_vector = tfidf_matrix[0]
-
-    job_vectors = tfidf_matrix[1:]
-
-    similarities = cosine_similarity(
-        resume_vector,
-        job_vectors
-    ).flatten()
+        resume_skills = extract_skills(resume_text)
 
 
-    # ======================================
-    # SKILL MATCHING
-    # ======================================
-
-    def calculate_skill_score(job_skills):
-
-        if len(resume_skills) == 0:
-            return 0
-
-        matched_skills = set(
-            resume_skills
-        ).intersection(
-            set(job_skills)
-        )
-
-        return (
-            len(matched_skills)
-            /
-            len(resume_skills)
+        st.success(
+            f"Resume processed successfully — "
+            f"{len(resume_skills)} skills detected."
         )
 
 
-    df["text_similarity"] = similarities
+        # ----------------------------------------------------
+        # Resume skills display
+        # ----------------------------------------------------
 
-    df["skill_score"] = df[
-        "job_skills"
-    ].apply(
-        calculate_skill_score
-    )
+        st.subheader("Detected Skills")
 
+        if resume_skills:
 
-    # ======================================
-    # FINAL MATCH SCORE
-    # ======================================
+            skill_html = ""
 
-    df["match_score"] = (
-        0.70 * df["text_similarity"]
-        +
-        0.30 * df["skill_score"]
-    )
+            for skill in resume_skills:
 
-    df["match_percentage"] = (
-        df["match_score"] * 100
-    )
+                skill_html += (
+                    f'<span class="skill-badge">{skill}</span>'
+                )
 
+            st.markdown(
+                skill_html,
+                unsafe_allow_html=True,
+            )
 
-    # ======================================
-    # APPLY LOCATION FILTER
-    # ======================================
+        else:
 
-    filtered_df = df.copy()
-
-    if selected_location != "All Locations":
-
-        filtered_df = filtered_df[
-            filtered_df["location"]
-            ==
-            selected_location
-        ]
+            st.info(
+                "No recognized technical skills were detected."
+            )
 
 
-    # ======================================
-    # APPLY SCORE FILTER
-    # ======================================
+        st.divider()
 
-    filtered_df = filtered_df[
-        filtered_df["match_percentage"]
-        >=
-        minimum_score
-    ]
+        # ----------------------------------------------------
+        # Matching
+        # ----------------------------------------------------
 
+        if top_n > 100:
+            st.stop()
 
-    # ======================================
-    # SORT RESULTS
-    # ======================================
-
-    results = filtered_df.sort_values(
-        "match_score",
-        ascending=False
-    ).head(
-        number_of_jobs
-    )
-
-
-    # ======================================
-    # SUMMARY
-    # ======================================
-
-    st.subheader("📊 Matching Summary")
-
-    col1, col2, col3 = st.columns(3)
-
-    with col1:
-
-        st.metric(
-            "Jobs Analyzed",
-            f"{len(df):,}"
-        )
-
-    with col2:
-
-        st.metric(
-            "Resume Skills",
-            len(resume_skills)
-        )
-
-    with col3:
-
-        st.metric(
-            "Jobs Recommended",
-            len(results)
-        )
-
-
-    # ======================================
-    # DISPLAY RESULTS
-    # ======================================
-
-    st.subheader("🎯 Recommended Jobs")
-
-    if len(results) == 0:
-
-        st.warning(
-            "No jobs match the selected filters. "
-            "Try lowering the minimum score or selecting All Locations."
-        )
-
-    else:
-
-        for index, (_, job) in enumerate(
-            results.iterrows(),
-            start=1
+        with st.spinner(
+            "Finding the best matching jobs..."
         ):
 
-            matched_skills = sorted(
-                set(resume_skills).intersection(
-                    set(job["job_skills"])
+            results = match_jobs(
+                resume_text,
+                resume_skills,
+                top_n=len(jobs_df),
+            )
+
+        # Apply location filter after ranking all jobs
+        if selected_location != "All Locations":
+            results = results[
+                results["location"].str.contains(
+                    selected_location,
+                    case=False,
+                    na=False,
                 )
+            ].reset_index(drop=True)
+
+        # Show only requested number of jobs
+        results = results.head(top_n)
+
+        # ----------------------------------------------------
+        # Results
+        # ----------------------------------------------------
+
+        st.subheader("Recommended Jobs")
+
+        st.caption(
+            f"Showing the top {min(top_n, len(results))} "
+            "jobs ranked by hybrid match score."
+        )
+
+
+        for rank, (_, job) in enumerate(
+            results.iterrows(),
+            start=1,
+        ):
+
+            matched_skills = job.get(
+                "matched_skills",
+                [],
+            )
+
+            missing_skills = job.get(
+                "missing_skills",
+                [],
             )
 
 
-            # ==================================
-            # JOB CARD
-            # ==================================
+            # ----------------------------------------------
+            # Job card
+            # ----------------------------------------------
 
             st.markdown(
                 '<div class="job-card">',
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
+            )
+
+
+            st.markdown(
+                f'<div class="job-title">'
+                f'#{rank} — {job["title"]}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+
+            company = job.get(
+                "company",
+                "Not specified",
+            )
+
+            location = job.get(
+                "location",
+                "Not specified",
+            )
+
+
+            st.markdown(
+                f'<div class="job-company">'
+                f'🏢 {company}'
+                f'</div>',
+                unsafe_allow_html=True,
             )
 
             st.markdown(
-                f"### {index}. {job['title']}"
+                f'<div class="job-location">'
+                f'📍 {location}'
+                f'</div>',
+                unsafe_allow_html=True,
             )
 
-            col1, col2, col3 = st.columns(3)
 
-            with col1:
+            # ----------------------------------------------
+            # Overall score
+            # ----------------------------------------------
 
-                st.write(
-                    f"🏢 **Company:** "
-                    f"{job['company']}"
-                )
-
-            with col2:
-
-                st.write(
-                    f"📍 **Location:** "
-                    f"{job['location']}"
-                )
-
-            with col3:
-
-                st.markdown(
-                    f'<div class="score">'
-                    f'🎯 {job["match_percentage"]:.2f}%'
-                    f'</div>',
-                    unsafe_allow_html=True
-                )
-
-                st.caption("Match Score")
+            match_score = float(
+                job.get("match_score", 0)
+            )
 
 
-            # ==================================
-            # SCORE DETAILS
-            # ==================================
+            st.markdown(
+                f"### Overall Match Score: "
+                f"{match_score * 100:.2f}%",
+            )
 
-            score_col1, score_col2 = st.columns(2)
+
+            # ----------------------------------------------
+            # Component scores
+            # ----------------------------------------------
+
+            score_col1, score_col2, score_col3 = st.columns(3)
+
 
             with score_col1:
 
                 st.write(
-                    f"**Text Similarity:** "
-                    f"{job['text_similarity'] * 100:.2f}%"
+                    f"**TF-IDF Similarity:** "
+                    f"{job['tfidf_score'] * 100:.2f}%"
                 )
+
 
             with score_col2:
 
                 st.write(
-                    f"**Skill Match:** "
+                    f"**Semantic Similarity:** "
+                    f"{job['embedding_score'] * 100:.2f}%"
+                )
+
+
+            with score_col3:
+
+                st.write(
+                    f"**Skill Coverage:** "
                     f"{job['skill_score'] * 100:.2f}%"
                 )
 
 
-            # ==================================
-            # MATCHED SKILLS
-            # ==================================
+            # ----------------------------------------------
+            # Matched skills
+            # ----------------------------------------------
 
             if matched_skills:
 
@@ -476,7 +524,7 @@ if uploaded_file is not None:
 
                 st.markdown(
                     skill_html,
-                    unsafe_allow_html=True
+                    unsafe_allow_html=True,
                 )
 
             else:
@@ -486,26 +534,122 @@ if uploaded_file is not None:
                 )
 
 
-            # ==================================
-            # VIEW JOB
-            # ==================================
+            # ----------------------------------------------
+            # Missing skills
+            # ----------------------------------------------
 
-            if pd.notna(job["job_url"]):
+            if missing_skills:
+
+                with st.expander(
+                    "Skills you may want to develop for this job"
+                ):
+
+                    missing_html = ""
+
+                    for skill in missing_skills:
+
+                        missing_html += (
+                            f'<span class="missing-badge">'
+                            f'{skill}'
+                            f'</span>'
+                        )
+
+                    st.markdown(
+                        missing_html,
+                        unsafe_allow_html=True,
+                    )
+
+            else:
+
+                st.success(
+                    "No additional extracted skills identified."
+                )
+
+
+            # ----------------------------------------------
+            # Job link
+            # ----------------------------------------------
+
+            if pd.notna(job.get("job_url")):
 
                 st.link_button(
                     "🔗 View Job",
-                    job["job_url"]
+                    job["job_url"],
                 )
 
 
             st.markdown(
-                '</div>',
-                unsafe_allow_html=True
+                "</div>",
+                unsafe_allow_html=True,
             )
 
 
-    # ======================================
-    # CLEAN TEMP FILE
-    # ======================================
+    except Exception as e:
 
-    os.remove(temp_path)
+        st.error(
+            f"An error occurred while processing the resume: {e}"
+        )
+
+        st.exception(e)
+
+
+    finally:
+
+        if temp_path and os.path.exists(temp_path):
+
+            os.remove(temp_path)
+
+
+# ------------------------------------------------------------
+# Methodology
+# ------------------------------------------------------------
+
+st.divider()
+
+with st.expander("How ResumeMatch works"):
+
+    st.markdown(
+        """
+        ### 1. Resume processing
+        The uploaded PDF or DOCX resume is converted into text.
+
+        ### 2. Skill extraction
+        Technical skills are identified using a controlled skill
+        vocabulary and alias normalization.
+
+        ### 3. Job data
+        Job postings are retrieved from the collected Adzuna dataset.
+
+        ### 4. Text similarity
+        TF-IDF and cosine similarity compare the resume text
+        with job posting text.
+
+        ### 5. Semantic similarity
+        Sentence embeddings provide a semantic comparison between
+        the resume and job descriptions.
+
+        ### 6. Skill coverage
+        The proportion of the candidate's extracted skills that
+        are also present in the job posting is calculated.
+
+        ### 7. Hybrid ranking
+        The final ranking score combines:
+
+        - 40% TF-IDF similarity
+        - 40% semantic similarity
+        - 20% skill coverage
+
+        The system then ranks the job postings and displays
+        matched and missing skills.
+        """
+    )
+
+
+# ------------------------------------------------------------
+# Footer
+# ------------------------------------------------------------
+
+st.caption(
+    "ResumeMatch — Personalized job recommendations using "
+    "text similarity and skill matching."
+)

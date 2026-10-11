@@ -1,0 +1,175 @@
+{
+  "ml": "Machine Learning",
+  "machine learning": "Machine Learning",
+
+  "dl": "Deep Learning",
+  "deep learning": "Deep Learning",
+
+  "nlp": "NLP",
+  "natural language processing": "NLP",
+
+  "ai": "Artificial Intelligence",
+  "artificial intelligence": "Artificial Intelligence",
+
+  "cv": "Computer Vision",
+  "computer vision": "Computer Vision",
+
+  "llm": "Large Language Models",
+  "large language model": "Large Language Models",
+  "large language models": "Large Language Models",
+
+  "js": "JavaScript",
+  "javascript": "JavaScript",
+  "java script": "JavaScript",
+
+  "ts": "TypeScript",
+  "typescript": "TypeScript",
+
+  "java": "Java",
+  "c": "C",
+  "r": "R",
+  "sql": "SQL",
+
+  "c++": "C++",
+  "cpp": "C++",
+  "c plus plus": "C++",
+
+  "c#": "C#",
+  "csharp": "C#",
+  "c sharp": "C#",
+
+  "sklearn": "Scikit-learn",
+  "scikit learn": "Scikit-learn",
+  "scikit-learn": "Scikit-learn",
+
+  "np": "NumPy",
+  "numpy": "NumPy",
+
+  "pd": "Pandas",
+  "pandas": "Pandas",
+
+  "tf": "TensorFlow",
+  "tensorflow": "TensorFlow",
+
+  "torch": "PyTorch",
+  "pytorch": "PyTorch",
+
+  "keras": "Keras",
+
+  "opencv": "OpenCV",
+  "open cv": "OpenCV",
+
+  "react.js": "React",
+  "reactjs": "React",
+  "react js": "React",
+
+  "node": "Node.js",
+  "nodejs": "Node.js",
+  "node.js": "Node.js",
+
+  "express": "Express.js",
+  "expressjs": "Express.js",
+  "express.js": "Express.js",
+
+  "nextjs": "Next.js",
+  "next js": "Next.js",
+  "next.js": "Next.js",
+
+  "vue": "Vue.js",
+  "vuejs": "Vue.js",
+  "vue js": "Vue.js",
+
+  "fast api": "FastAPI",
+  "fastapi": "FastAPI",
+
+  "rest": "REST API",
+  "rest api": "REST API",
+  "restful api": "RESTful API",
+
+  "graphql": "GraphQL",
+
+  "postgres": "PostgreSQL",
+  "postgresql": "PostgreSQL",
+
+  "mongo": "MongoDB",
+  "mongodb": "MongoDB",
+
+  "mysql": "MySQL",
+
+  "sql server": "SQL Server",
+  "mssql": "Microsoft SQL Server",
+
+  "aws": "AWS",
+  "amazon web services": "Amazon Web Services",
+
+  "azure": "Azure",
+  "microsoft azure": "Microsoft Azure",
+
+  "gcp": "GCP",
+  "google cloud": "Google Cloud Platform",
+  "google cloud platform": "Google Cloud Platform",
+
+  "k8s": "Kubernetes",
+  "kubernetes": "Kubernetes",
+
+  "docker": "Docker",
+
+  "ci cd": "CI/CD",
+  "ci/cd": "CI/CD",
+  "continuous integration": "Continuous Integration",
+  "continuous deployment": "Continuous Deployment",
+
+  "git": "Git",
+  "github": "GitHub",
+  "gitlab": "GitLab",
+
+  "powerbi": "Power BI",
+  "power bi": "Power BI",
+
+  "ms excel": "Microsoft Excel",
+  "microsoft excel": "Microsoft Excel",
+  "excel": "Excel",
+
+  "tableau": "Tableau",
+
+  "jupyter notebook": "Jupyter Notebook",
+  "jupyter": "Jupyter",
+
+  "colab": "Google Colab",
+  "google colab": "Google Colab",
+
+  "vscode": "Visual Studio Code",
+  "vs code": "VS Code",
+
+  "oop": "Object-Oriented Programming",
+  "object oriented programming": "Object-Oriented Programming",
+  "object-oriented programming": "Object-Oriented Programming",
+
+  "dsa": "Data Structures and Algorithms",
+  "data structures and algorithms": "Data Structures and Algorithms",
+
+  "data structures": "Data Structures",
+
+  "api testing": "API Testing",
+
+  "qa": "QA",
+  "quality assurance": "Quality Assurance",
+
+  "jwt": "JWT",
+  "json web token": "JWT",
+
+  "tcp ip": "TCP/IP",
+  "tcp/ip": "TCP/IP",
+
+  "http": "HTTP",
+  "https": "HTTPS",
+
+  "kafka": "Kafka",
+  "apache kafka": "Apache Kafka",
+
+  "spark": "Spark",
+  "apache spark": "Apache Spark",
+
+  "airflow": "Apache Airflow",
+  "apache airflow": "Apache Airflow"
+}
