@@ -21,3 +21,5 @@ recommendations.csv
 .vscode/
 .DS_Store
 Thumbs.db
+
+data/jobs_with_skills_old.csv
