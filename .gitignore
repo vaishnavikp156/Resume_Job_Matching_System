@@ -23,3 +23,11 @@ recommendations.csv
 Thumbs.db
 
 data/jobs_with_skills_old.csv
+
+# Local datasets and generated matching artifacts
+data/*.csv
+data/*.npy
+data/*.joblib
+
+# Local backup
+app_broken_backup.py
